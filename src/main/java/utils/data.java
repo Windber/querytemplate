@@ -8,7 +8,7 @@ import java.util.List;
  * @Author: winder
  * @Date: 12/21/21 3:38 PM
  */
-public class sqls {
+public class data {
     public static String single_select = "select b,a from c where a='33' and b='ddd' and a in ('33','332','334')";
     public static String single_expr = "a='33'";
     public  static List<String> data = new ArrayList<>(
