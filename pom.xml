@@ -36,29 +36,82 @@
       <version>4.11</version>
       <scope>test</scope>
     </dependency>
+<!--    &lt;!&ndash; https://mvnrepository.com/artifact/org.apache.spark/spark-sql &ndash;&gt;-->
+<!--    <dependency>-->
+<!--      <groupId>org.apache.spark</groupId>-->
+<!--      <artifactId>spark-sql_2.11</artifactId>-->
+<!--      <version>2.1.0</version>-->
+<!--&lt;!&ndash;      <scope>provided</scope>&ndash;&gt;-->
+<!--    </dependency>-->
+<!--    &lt;!&ndash; https://mvnrepository.com/artifact/org.apache.spark/spark-hive &ndash;&gt;-->
+<!--    <dependency>-->
+<!--      <groupId>org.apache.spark</groupId>-->
+<!--      <artifactId>spark-hive_2.11</artifactId>-->
+<!--      <version>2.1.0</version>-->
+<!--&lt;!&ndash;      <scope>provided</scope>&ndash;&gt;-->
+<!--    </dependency>-->
+    <!-- https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-common -->
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-common</artifactId>
+      <version>2.7.3</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-client -->
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-client</artifactId>
+      <version>2.7.3</version>
+    </dependency>
+<!--    &lt;!&ndash; https://mvnrepository.com/artifact/org.apache.calcite/calcite-core &ndash;&gt;-->
+<!--    <dependency>-->
+<!--      <groupId>org.apache.calcite</groupId>-->
+<!--      <artifactId>calcite-core</artifactId>-->
+<!--      <version>1.29.0</version>-->
+<!--    </dependency>-->
+<!--    <dependency>-->
+<!--      <groupId>org.apache.calcite</groupId>-->
+<!--      <artifactId>calcite-core</artifactId>-->
+<!--      <version>1.20.0</version>-->
+<!--      <classifier>tests</classifier>-->
+<!--      <type>test-jar</type>-->
+<!--    </dependency>-->
+<!--    &lt;!&ndash; https://mvnrepository.com/artifact/org.hsqldb/hsqldb &ndash;&gt;-->
+<!--    <dependency>-->
+<!--      <groupId>org.hsqldb</groupId>-->
+<!--      <artifactId>hsqldb</artifactId>-->
+<!--      <version>2.4.1</version>-->
+<!--&lt;!&ndash;      <scope>test</scope>&ndash;&gt;-->
+<!--    </dependency>-->
+
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>18.0</version>
+    </dependency>
+<!--    &lt;!&ndash; https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java &ndash;&gt;-->
+<!--    <dependency>-->
+<!--      <groupId>com.google.protobuf</groupId>-->
+<!--      <artifactId>protobuf-java</artifactId>-->
+<!--      <version>3.19.1</version>-->
+<!--    </dependency>-->
+
+    <!-- https://mvnrepository.com/artifact/org.apache.hive/hive-exec -->
+    <dependency>
+      <groupId>org.apache.hive</groupId>
+      <artifactId>hive-exec</artifactId>
+      <version>3.1.2</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+
   </dependencies>
 
   <build>
-    <plugins>
-      <plugin>
-        <artifactId>maven-assembly-plugin</artifactId>
-        <version>3.1.0</version>
-        <configuration>
-          <descriptorRefs>
-            <descriptorRef>jar-with-dependencies</descriptorRef>
-          </descriptorRefs>
-        </configuration>
-        <executions>
-          <execution>
-            <id>make-assembly</id> <!-- this is used for inheritance merges -->
-            <phase>package</phase> <!-- bind to the packaging phase -->
-            <goals>
-              <goal>single</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
     <pluginManagement><!-- lock down plugins versions to avoid using Maven defaults (may be moved to parent pom) -->
       <plugins>
         <!-- clean lifecycle, see https://maven.apache.org/ref/current/maven-core/lifecycles.html#clean_Lifecycle -->
@@ -104,4 +157,31 @@
       </plugins>
     </pluginManagement>
   </build>
+  <profiles>
+    <profile>
+      <id>inner</id>
+      <build>
+      <plugins>
+        <plugin>
+          <artifactId>maven-assembly-plugin</artifactId>
+          <version>3.1.0</version>
+          <configuration>
+            <descriptorRefs>
+              <descriptorRef>jar-with-dependencies</descriptorRef>
+            </descriptorRefs>
+          </configuration>
+          <executions>
+            <execution>
+              <id>make-assembly</id> <!-- this is used for inheritance merges -->
+              <phase>package</phase> <!-- bind to the packaging phase -->
+              <goals>
+                <goal>single</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+      </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
