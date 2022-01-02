@@ -637,58 +637,58 @@ public class CustomDriver implements IDriver {
 
             LOG.info("Semantic Analysis Completed (retrial = {})", retrial);
 
-            // Retrieve information about cache usage for the query.
-            if (conf.getBoolVar(HiveConf.ConfVars.HIVE_QUERY_RESULTS_CACHE_ENABLED)) {
-                cacheUsage = sem.getCacheUsage();
-            }
-
-            // validate the plan
-            sem.validate();
-            perfLogger.PerfLogEnd(CLASS_NAME, PerfLogger.ANALYZE);
-
-            checkInterrupted("after analyzing query.", null, null);
-
-            // get the output schema
-            schema = getSchema(sem, conf);
-            plan = new QueryPlan(queryStr, sem, perfLogger.getStartTime(PerfLogger.DRIVER_RUN), queryId,
-                    queryState.getHiveOperation(), schema);
-
-            conf.set("mapreduce.workflow.id", "hive_" + queryId);
-            conf.set("mapreduce.workflow.name", queryStr);
-
-            // initialize FetchTask right here
-            if (plan.getFetchTask() != null) {
-                plan.getFetchTask().initialize(queryState, plan, null, ctx.getOpContext());
-            }
-
-            //do the authorization check
-            if (!sem.skipAuthorization() &&
-                    HiveConf.getBoolVar(conf, HiveConf.ConfVars.HIVE_AUTHORIZATION_ENABLED)) {
-
-                try {
-                    perfLogger.PerfLogBegin(CLASS_NAME, PerfLogger.DO_AUTHORIZATION);
-                    doAuthorization(queryState.getHiveOperation(), sem, command);
-                } catch (AuthorizationException authExp) {
-                    console.printError("Authorization failed:" + authExp.getMessage()
-                            + ". Use SHOW GRANT to get more details.");
-                    errorMessage = authExp.getMessage();
-                    SQLState = "42000";
-                    throw createProcessorResponse(403);
-                } finally {
-                    perfLogger.PerfLogEnd(CLASS_NAME, PerfLogger.DO_AUTHORIZATION);
-                }
-            }
-
-            if (conf.getBoolVar(ConfVars.HIVE_LOG_EXPLAIN_OUTPUT)) {
-                String explainOutput = getExplainOutput(sem, plan, tree);
-                if (explainOutput != null) {
-                    LOG.info("EXPLAIN output for queryid " + queryId + " : "
-                            + explainOutput);
-                    if (conf.isWebUiQueryInfoCacheEnabled()) {
-                        queryDisplay.setExplainPlan(explainOutput);
-                    }
-                }
-            }
+//            // Retrieve information about cache usage for the query.
+//            if (conf.getBoolVar(HiveConf.ConfVars.HIVE_QUERY_RESULTS_CACHE_ENABLED)) {
+//                cacheUsage = sem.getCacheUsage();
+//            }
+//
+//            // validate the plan
+//            sem.validate();
+//            perfLogger.PerfLogEnd(CLASS_NAME, PerfLogger.ANALYZE);
+//
+//            checkInterrupted("after analyzing query.", null, null);
+//
+//            // get the output schema
+//            schema = getSchema(sem, conf);
+//            plan = new QueryPlan(queryStr, sem, perfLogger.getStartTime(PerfLogger.DRIVER_RUN), queryId,
+//                    queryState.getHiveOperation(), schema);
+//
+//            conf.set("mapreduce.workflow.id", "hive_" + queryId);
+//            conf.set("mapreduce.workflow.name", queryStr);
+//
+//            // initialize FetchTask right here
+//            if (plan.getFetchTask() != null) {
+//                plan.getFetchTask().initialize(queryState, plan, null, ctx.getOpContext());
+//            }
+//
+//            //do the authorization check
+//            if (!sem.skipAuthorization() &&
+//                    HiveConf.getBoolVar(conf, HiveConf.ConfVars.HIVE_AUTHORIZATION_ENABLED)) {
+//
+//                try {
+//                    perfLogger.PerfLogBegin(CLASS_NAME, PerfLogger.DO_AUTHORIZATION);
+//                    doAuthorization(queryState.getHiveOperation(), sem, command);
+//                } catch (AuthorizationException authExp) {
+//                    console.printError("Authorization failed:" + authExp.getMessage()
+//                            + ". Use SHOW GRANT to get more details.");
+//                    errorMessage = authExp.getMessage();
+//                    SQLState = "42000";
+//                    throw createProcessorResponse(403);
+//                } finally {
+//                    perfLogger.PerfLogEnd(CLASS_NAME, PerfLogger.DO_AUTHORIZATION);
+//                }
+//            }
+//
+//            if (conf.getBoolVar(ConfVars.HIVE_LOG_EXPLAIN_OUTPUT)) {
+//                String explainOutput = getExplainOutput(sem, plan, tree);
+//                if (explainOutput != null) {
+//                    LOG.info("EXPLAIN output for queryid " + queryId + " : "
+//                            + explainOutput);
+//                    if (conf.isWebUiQueryInfoCacheEnabled()) {
+//                        queryDisplay.setExplainPlan(explainOutput);
+//                    }
+//                }
+//            }
         } catch (CommandProcessorResponse cpr) {
             throw cpr;
         } catch (Exception e) {

@@ -25,6 +25,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
+import expr.hive.usecustomdriverwithhook;
 import org.antlr.runtime.ClassicToken;
 import org.antlr.runtime.CommonToken;
 import org.antlr.runtime.tree.Tree;
@@ -1705,6 +1706,7 @@ public class CustomCalcitePlanner extends SemanticAnalyzer {
             calciteGenPlan = HiveRelDecorrelator.decorrelateQuery(calciteGenPlan);
             LOG.debug("Plan after decorrelation:\n" + RelOptUtil.toString(calciteGenPlan));
 
+            usecustomdriverwithhook.rel = calciteGenPlan;
             // 2. Apply pre-join order optimizations
             calcitePreCboPlan = applyPreJoinOrderingTransforms(calciteGenPlan,
                     mdProvider.getMetadataProvider(), executorProvider);
