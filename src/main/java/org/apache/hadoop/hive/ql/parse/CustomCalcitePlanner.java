@@ -301,7 +301,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
-public class CustomCalcitePlanner extends SemanticAnalyzer {
+public class CustomCalcitePlanner extends CustomSemanticAnalyzer {
 
     private final AtomicInteger noColsMissingStats = new AtomicInteger(0);
     private SemanticException semanticException;
