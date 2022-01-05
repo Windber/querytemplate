@@ -350,7 +350,8 @@ public abstract class CustomSqlImplementor {
         if (aliases != null
                 && !aliases.isEmpty()
                 && (!dialect.hasImplicitTableAlias()
-                || aliases.size() > 1)) {
+//                || aliases.size() > 1)) {
+                || aliases.size() > 0)) {
             return new Result(node, clauses, alias4, rel.getRowType(), aliases);
         }
         final String alias5;
@@ -898,6 +899,7 @@ public abstract class CustomSqlImplementor {
         public Builder builder(RelNode rel, Clause... clauses) {
             final Clause maxClause = maxClause();
             boolean needNew = false;
+            Map<String, RelDataType> newAliases = null;
             // If old and new clause are equal and belong to below set,
             // then new SELECT wrap is not required
             Set<Clause> nonWrapSet = ImmutableSet.of(Clause.SELECT);
@@ -937,7 +939,7 @@ public abstract class CustomSqlImplementor {
                 };
             } else {
                 boolean qualified =
-                        !dialect.hasImplicitTableAlias() || aliases.size() > 1;
+                        !dialect.hasImplicitTableAlias() || aliases.size() > 0;
                 // basically, we did a subSelect() since needNew is set and neededAlias is not null
                 // now, we need to make sure that we need to update the alias context.
                 // if our aliases map has a single element:  <neededAlias, rowType>,
@@ -945,15 +947,14 @@ public abstract class CustomSqlImplementor {
                 if (needNew
                         && neededAlias != null
                         && (aliases.size() != 1 || !aliases.containsKey(neededAlias))) {
-                    final Map<String, RelDataType> newAliases =
-                            ImmutableMap.of(neededAlias, rel.getInput(0).getRowType());
+                    newAliases = ImmutableMap.of(neededAlias, rel.getInput(0).getRowType());
                     newContext = aliasContext(newAliases, qualified);
                 } else {
                     newContext = aliasContext(aliases, qualified);
                 }
             }
             return new Builder(rel, clauseList, select, newContext,
-                    needNew ? null : aliases);
+                    needNew ? newAliases : aliases);
         }
 
         private boolean hasNestedAggregations(LogicalAggregate rel) {
