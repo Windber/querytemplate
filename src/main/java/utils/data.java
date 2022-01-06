@@ -11,33 +11,34 @@ import java.util.List;
 public class data {
     public static String single_select = "select b,a from c where a='33' and b='ddd' and a in ('33','332','334')";
     public static String single_expr = "a='33'";
-    public  static List<String> data = new ArrayList<>(
+    public  static List<String> forhive_failed = new ArrayList<>(
             Arrays.asList(
-                    "select b,a from c where a='33' and b='ddd' and a in ('33','332','334')",
-                    "select b,a from x where x.a>33 and b='ddd' and a in ('33','332','334')",
-                    "select rownum,organ_level4,organ_name4,user_no,user_name,pzl_num,xf_ccn from (select t.organ_level4,t.organ_name4,t.user_no,t.user_name,sum(t.pzl_num) pzl_num,sum(t.xf_ccn) xf_ccn from rt_smtj_tb t,sm_user_organ_tb a,sm_organ_tb b where 2>1 and a.organ_no=b.organ_no and b.organ_no=t.organ_level4 and b.organ_level=4 and a.user_no='#DEAL_USERNO#' group by t.organ_level4,t.organ_name4,t.user_no,t.user_name order by sum(t.pzl_num) desc,user_no)",
-                    "select rownum,\n" +
-                            "organ_level4,\n" +
-                            "organ_name4,\n" +
-                            "user_no,\n" +
-                            "user_name,\n" +
-                            "pzl_num,\n" +
-                            "xf_ccn\n" +
-                            "from (select t.organ_level4,\n" +
-                            "t.organ_name4,\n" +
-                            "t.user_no,\n" +
-                            "t.user_name,\n" +
-                            "sum(t.pzl_num) pzl_num,\n" +
-                            "sum(t.xf_ccn) xf_ccn\n" +
-                            "from rt_smtj_tb t, sm_user_organ_tb a, sm_organ_tb b\n" +
-                            "where 2 > 1\n" +
-                            "and a.organ_no = b.organ_no\n" +
-                            "and b.organ_no = t.organ_level4\n" +
-                            "and b.organ_level = 4\n" +
-                            "and a.user_no = '#DEAL_USERNO#'\n" +
-                            "group by t.organ_level4, t.organ_name4, t.user_no, t.user_name\n" +
-                            "order by sum(t.pzl_num) desc, user_no)"
-
+            "select b3 from o3 order by b3"
+            , "select b3, c3, sum(a3) from (select a1 + 3 as a, b2 as b from o1 as t1 join o2 as t2 on b1 = b2 where c1 > 0 and b2 = 'b') t3 join o3 on b = b3 where b = 'a' and a3 > 5 group by b3, c3 having c3> 0 order by b3 limit 10"
+            , "select a1 from o1 where b1 in ('a', 'b', 'c')"
             )
     );
+    public  static List<String> forhive_wrong = new ArrayList<>(
+    );
+    public  static List<String> forhive_succeed = new ArrayList<>(
+            Arrays.asList(
+                    "select a1 from o1 join o2 on o1.a1 = o2.a2"
+                    //                    alias会被消除
+                    , "Select a1 from (select a1, c1 from o1 as t1 where t1.a1 > 0) t2 where a1 = 1 and c1 != 3.0"
+                    , "Select a from (select a from  as xx where xx.a > 0) y where a = 1"
+                    , "select b3, c3, sum(a3) from (select a1 + 3 as a, b2 as b from o1 as t1 join o2 as t2 on b1 = b2 where c1 > 0 and b2 = 'b') t3 join o3 on b = b3 where b = 'a' and a3 > 5 group by b3, c3 having c3> 0 limit 10"
+                    , "select a1 from (select a1, c1 from o1 where a1 > 0) x1 where a1 < 3"
+                    , "select a, b, a3, c3 from (select a1 + 3 as a, b2 as b from o1 as t1 join o2 as t2 on b1 = b2 where c1 > 0 and b2 = 'b') t3 join o3 on b = b3 where b = 'a' and a3 > 5 limit 10"
+                    , "select a1 from o1 where limit 10"
+                    , "select a1 from (select a1 from o1 where a1 > 0) t1 where a1 < 3"
+            )
+    );
+    public  static List<String> fordruid = new ArrayList<>(
+            Arrays.asList(
+                    "select a, b from (select c + 3 as a, b from o1 join o2 on o1.c = o2.c where o1.c > 0 and o1.b in (1, 20)) t1 where t1.b > 10 or t1.a > 5 limit 100",
+                    "insert a from o1 limit 100"
+            )
+    );
+
+
 }
