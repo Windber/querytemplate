@@ -119,11 +119,16 @@ SELECT t0.a1 FROM ( 	SELECT o1.a1, o1.c1 	FROM DEFAULT.o1 	WHERE o1.a1 > ${o1.a1
 SELECT t0.a, t0.b, o3.a3, o3.c3 FROM ( 	SELECT o1.a1 + ${o1.a1} AS a, o2.b2 AS b 	FROM DEFAULT.o1 		INNER JOIN DEFAULT.o2 ON o1.b1 = o2.b2 	WHERE o1.c1 > ? 		AND o2.b2 = ${o2.b2} ) t0 	INNER JOIN DEFAULT.o3 ON t0.b = o3.b3 WHERE t0.b = ${t0.b} 	AND o3.a3 > ${o3.a3} LIMIT 0, 10;
 SELECT * FROM ( 	SELECT o1.a1 	FROM DEFAULT.o1 	WHERE o1.a1 > ${o1.a1} ) t0 WHERE t0.a1 < 3;
 ```
-# 模板需求
-1. 天表将日期后缀替换为`${date}`
-2. 将字段`start_time` `end_time` 替换为`${start_time}` `${end_time}`
-3. 举例
 
+# 使用方式
+1. 打成fat jar
 ```
-select a,b,c from tablename_${date} where start_time > ${start_time} and end_time < ${end_time};
+mvn clean package -Pinner
 ```
+2. 在服务器上传位置执行命令
+```
+java -cp ./querytemplate-1.0-SNAPSHOT-jar-with-dependencies.jar gtemplate.Main  custom /usr/lib/impala-shell/gen-py/result.txt thrift://192.168.80.142:9083 
+```
+
+3. 查看生成的文件`template.sql`
+
