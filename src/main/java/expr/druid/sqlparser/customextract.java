@@ -37,7 +37,7 @@ public class customextract {
             Scanner scanner = new Scanner(new FileInputStream(args[1])).useDelimiter("\\n");
             iter = scanner;
         }else {
-            iter = data.data.iterator();
+            iter = data.forhive_succeed.iterator();
         }
 
         Class.forName("org.sqlite.JDBC");

@@ -13,7 +13,15 @@ public class data {
     public static String single_expr = "a='33'";
     public  static List<String> forhive_failed = new ArrayList<>(
             Arrays.asList(
-            "select b3 from o3 order by b3"
+                    "select b3 from o3 order by b3"
+                    , "select a1 from o1 where b1 in (select inline(array(struct('A'),struct('B'))))"
+//                    , "select a1 from o1 where b1 = 'a' or b1 = 'b' or b1 = 'c'"
+//                    "select a1 from o1 where b1 in ('a', 'b', 'c')"
+//                    "insert into o1 values (1, '1', 1), (1, '1', 1)"
+                    , "select a1 from o1 where b1 in (select b2 from o2 limit 3)"
+                    , "select a1 from o1 where b1 in ('a')"
+                    , "select a1 from o1 where b1 in ('a', 'b', 'c')"
+            , "select b3 from o3 order by b3"
             , "select b3, c3, sum(a3) from (select a1 + 3 as a, b2 as b from o1 as t1 join o2 as t2 on b1 = b2 where c1 > 0 and b2 = 'b') t3 join o3 on b = b3 where b = 'a' and a3 > 5 group by b3, c3 having c3> 0 order by b3 limit 10"
             , "select a1 from o1 where b1 in ('a', 'b', 'c')"
             )
@@ -22,7 +30,8 @@ public class data {
     );
     public  static List<String> forhive_succeed = new ArrayList<>(
             Arrays.asList(
-                    "select a1 from o1 join o2 on o1.a1 = o2.a2"
+                    "select b3, c3, sum(a3) from (select a1 + 3 as a, b2 as b from o1 as t1 join o2 as t2 on b1 = b2 where c1 > 0 and b2 = 'b') t3 join o3 on b = b3 where b = 'a' and a3 > 5 group by b3, c3 having c3> 0 limit 10"
+                    , "select a1 from o1 join o2 on o1.a1 = o2.a2"
                     //                    alias会被消除
                     , "Select a1 from (select a1, c1 from o1 as t1 where t1.a1 > 0) t2 where a1 = 1 and c1 != 3.0"
                     , "Select a from (select a from  as xx where xx.a > 0) y where a = 1"

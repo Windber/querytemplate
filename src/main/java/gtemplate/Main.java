@@ -54,7 +54,7 @@ public class Main {
             Scanner scanner = new Scanner(new FileInputStream(args[1])).useDelimiter("\\n");
             iter = scanner;
         }else {
-            iter = data.forhive_succeed.iterator();
+            iter = data.forhive_failed.iterator();
         }
 
         String metastore_addr = "thrift://localhost:9083";

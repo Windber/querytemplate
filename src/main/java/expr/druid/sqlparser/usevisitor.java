@@ -7,7 +7,7 @@ import com.alibaba.druid.sql.ast.statement.SQLExprTableSource;
 import com.alibaba.druid.sql.ast.statement.SQLTableSource;
 import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlASTVisitorAdapter;
 import com.alibaba.druid.util.JdbcConstants;
-import utils.sqls;
+import utils.data;
 
 import java.util.HashMap;
 import java.util.List;
@@ -32,7 +32,7 @@ public class usevisitor {
     public static void main(String[] args) {
         final DbType dbType = JdbcConstants.ORACLE; // JdbcConstants.MYSQL或者JdbcConstants.POSTGRESQL
 //        String sql = "select * from mytable a where a.id = 3";
-        for(String sql: sqls.data) {
+        for(String sql: data.forhive_succeed) {
             List<SQLStatement> stmtList = SQLUtils.parseStatements(sql, dbType);
 
             ExportTableAliasVisitor visitor = new ExportTableAliasVisitor();
