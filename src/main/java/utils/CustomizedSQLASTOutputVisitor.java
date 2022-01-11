@@ -1,25 +1,24 @@
 package utils;
 
 import com.alibaba.druid.DbType;
-import com.alibaba.druid.sql.ast.SQLExpr;
-import com.alibaba.druid.sql.ast.SQLObject;
+import com.alibaba.druid.sql.ast.*;
 import com.alibaba.druid.sql.ast.expr.*;
-import com.alibaba.druid.sql.ast.statement.SQLSelectQueryBlock;
-import com.alibaba.druid.sql.ast.statement.SQLSubqueryTableSource;
+import com.alibaba.druid.sql.ast.statement.*;
 import com.alibaba.druid.sql.visitor.ExportParameterVisitorUtils;
 import com.alibaba.druid.sql.visitor.SQLASTOutputVisitor;
 import com.alibaba.druid.sql.visitor.VisitorFeature;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
 
 /***
  * @Author: winder
  * @Date: 12/28/21 3:37 PM
  */
 public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
+    Stack<SQLObject> inwhere = new Stack<SQLObject>();
     public static class ColInfo {
         String name;
         public ColInfo(String name) {
@@ -39,7 +38,37 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
         super(appender, parameterized);
     }
     private static final Integer ONE = Integer.valueOf(1);
-//    public boolean iswhere = false;
+
+//    利用短路与性质，与isInwhere结合使用
+
+    public boolean isnotSubQuery(SQLTableSource x) {
+        if (x instanceof SQLExprTableSource) {
+            return true;
+        }else if (x instanceof SQLSubqueryTableSource) {
+            return false;
+        }else if (x instanceof SQLJoinTableSource) {
+            return isnotSubQuery(((SQLJoinTableSource) x).getLeft()) && isnotSubQuery(((SQLJoinTableSource) x).getRight());
+        }else {
+            try {
+                throw new Exception("unkown SQLTableSource");
+            }catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return true;
+    }
+    public boolean isnotFromSubQuery() {
+        SQLTableSource source = ((SQLSelectQueryBlock)
+                (inwhere.peek().getParent())).getFrom();
+        return isnotSubQuery(source);
+    }
+    public boolean isInwhere() {
+        if (inwhere.peek() instanceof SQLSelectQueryBlock) {
+            return false;
+        }else {
+            return true;
+        }
+    }
     @Override
     protected void printInteger(SQLIntegerExpr x, boolean parameterized) {
         Number number = x.getNumber();
@@ -78,9 +107,9 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
 //        }
 
 //        if (parameterized && !issubquery && iswhere) {
-        if (parameterized) {
 
-            if (this.parameterized) {
+
+            if (this.parameterized && isInwhere() && isnotFromSubQuery()) {
 
                 ColInfo ci;
                 ci = get_colname(x);
@@ -114,10 +143,9 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
             } else {
                 print(number.longValue());
             }
-        }
     }
     public boolean visit(SQLNCharExpr x) {
-        if (this.parameterized) {
+        if (this.parameterized  && isInwhere() && isnotFromSubQuery()) {
             ColInfo ci;
             ci = get_colname(x);
             if (ci!=null) {
@@ -146,7 +174,7 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
 
     @Override
     public boolean visit(SQLCharExpr x, boolean parameterized) {
-        if (parameterized) {
+        if (parameterized && isInwhere() && isnotFromSubQuery()) {
 
             ColInfo ci;
             ci = get_colname(x);
@@ -197,8 +225,128 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
         }
         return name.equals("")? null: new ColInfo(name);
     }
+
+    public boolean visit(SQLSelectQueryBlock x) {
+        inwhere.push(x);
+        if (isPrettyFormat() && x.hasBeforeComment()) {
+            printlnComments(x.getBeforeCommentsDirect());
+        }
+
+        print0(ucase ? "SELECT " : "select ");
+
+        if (x.getHintsSize() > 0) {
+            printAndAccept(x.getHints(), ", ");
+            print(' ');
+        }
+
+        final boolean informix =DbType.informix == dbType;
+        if (informix) {
+            printFetchFirst(x);
+        }
+
+        final int distinctOption = x.getDistionOption();
+        if (SQLSetQuantifier.ALL == distinctOption) {
+            print0(ucase ? "ALL " : "all ");
+        } else if (SQLSetQuantifier.DISTINCT == distinctOption) {
+            print0(ucase ? "DISTINCT " : "distinct ");
+        } else if (SQLSetQuantifier.UNIQUE == distinctOption) {
+            print0(ucase ? "UNIQUE " : "unique ");
+        }
+
+        printSelectList(
+                x.getSelectList());
+
+        SQLExprTableSource into = x.getInto();
+        if (into != null) {
+            println();
+            print0(ucase ? "INTO " : "into ");
+            into.accept(this);
+        }
+
+        SQLTableSource from = x.getFrom();
+        if (from != null) {
+            println();
+
+            boolean printFrom = from instanceof SQLLateralViewTableSource
+                    && ((SQLLateralViewTableSource) from).getTableSource() == null;
+            if (!printFrom) {
+                print0(ucase ? "FROM " : "from ");
+            }
+            printTableSource(from);
+        }
+
+        SQLExpr where = x.getWhere();
+        if (where != null) {
+            println();
+            print0(ucase ? "WHERE " : "where ");
+            printExpr(where, parameterized);
+
+            if (where.hasAfterComment() && isPrettyFormat()) {
+                print(' ');
+                printlnComment(x.getWhere().getAfterCommentsDirect());
+            }
+        }
+
+        printHierarchical(x);
+
+        SQLSelectGroupByClause groupBy = x.getGroupBy();
+        if (groupBy != null) {
+            println();
+            visit(groupBy);
+        }
+
+        List<SQLWindow> windows = x.getWindows();
+        if (windows != null && windows.size() > 0) {
+            println();
+            print0(ucase ? "WINDOW " : "window ");
+            printAndAccept(windows, ", ");
+        }
+
+        SQLOrderBy orderBy = x.getOrderBy();
+        if (orderBy != null) {
+            println();
+            orderBy.accept(this);
+        }
+
+        final List<SQLSelectOrderByItem> distributeBy = x.getDistributeByDirect();
+        if (distributeBy != null && distributeBy.size() > 0) {
+            println();
+            print0(ucase ? "DISTRIBUTE BY " : "distribute by ");
+            printAndAccept(distributeBy, ", ");
+        }
+
+        List<SQLSelectOrderByItem> sortBy = x.getSortByDirect();
+        if (sortBy != null && sortBy.size() > 0) {
+            println();
+            print0(ucase ? "SORT BY " : "sort by ");
+            printAndAccept(sortBy, ", ");
+        }
+
+        final List<SQLSelectOrderByItem> clusterBy = x.getClusterByDirect();
+        if (clusterBy != null && clusterBy.size() > 0) {
+            println();
+            print0(ucase ? "CLUSTER BY " : "cluster by ");
+            printAndAccept(clusterBy, ", ");
+        }
+
+        if (!informix) {
+            printFetchFirst(x);
+        }
+
+        if (x.isForUpdate()) {
+            println();
+            print0(ucase ? "FOR UPDATE" : "for update");
+        }
+
+
+        return false;
+    }
+
+    public void endVisit(SQLSelectQueryBlock x) {
+        inwhere.pop();
+    }
     public boolean visit(SQLNumberExpr x) {
-        if (this.parameterized) {
+        if (this.parameterized && isInwhere() && isnotFromSubQuery()) {
 
             ColInfo ci;
             ci = get_colname(x);
@@ -258,7 +406,7 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
             quote = true;
         }
 
-        if (this.parameterized) {
+        if (this.parameterized  && isInwhere() && isnotFromSubQuery()) {
             List<SQLExpr> targetList = x.getTargetList();
 
             boolean allLiteral = true;
@@ -443,187 +591,54 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
         }
         return false;
     }
-//    public void endVisit(SQLBinaryOpExprGroup x) {
-//        SQLObject obj = x;
-//        while(true) {
-//            obj = obj.getParent();
-//            if (obj instanceof SQLSelectQueryBlock) {
-//                break;
-//            }
-//        }
-//        SQLSelectQueryBlock qb = (SQLSelectQueryBlock)obj;
-//        if (qb.getWhere() == this) {
-//            iswhere = false;
-//        }
-//    }
-//    public boolean visit(SQLBinaryOpExprGroup x) {
-//
-//        SQLObject obj = x;
-//        while(true) {
-//            obj = obj.getParent();
-//            if (obj instanceof SQLSelectQueryBlock) {
-//                break;
-//            }
-//        }
-//        SQLSelectQueryBlock qb = (SQLSelectQueryBlock)obj;
-//        if (qb.getWhere() == this) {
-//            iswhere = true;
-//        }
-//
-//
-//        SQLObject parent = x.getParent();
-//        SQLBinaryOperator operator = x.getOperator();
-//
-//        boolean isRoot = parent instanceof SQLSelectQueryBlock || parent instanceof SQLBinaryOpExprGroup;
-//
-//        List<SQLExpr> items = x.getItems();
-//        if (items.size() == 0) {
-//            print("true");
-//            return false;
-//        }
-//
-//        if (isRoot) {
-//            this.indentCount++;
-//        }
-//
-//        if (this.parameterized) {
-//            SQLExpr firstLeft = null;
-//            SQLBinaryOperator firstOp = null;
-//            List<Object> parameters = new ArrayList<Object>(items.size());
-//
-//            List<SQLBinaryOpExpr> literalItems = null;
-//
-//            if ((operator != SQLBinaryOperator.BooleanOr || !isEnabled(VisitorFeature.OutputParameterizedQuesUnMergeOr)) &&
-//                    (operator != SQLBinaryOperator.BooleanAnd || !isEnabled(VisitorFeature.OutputParameterizedQuesUnMergeAnd))) {
-//                for (int i = 0; i < items.size(); i++) {
-//                    SQLExpr item = items.get(i);
-//                    if (item instanceof SQLBinaryOpExpr) {
-//                        SQLBinaryOpExpr binaryItem = (SQLBinaryOpExpr) item;
-//                        SQLExpr left = binaryItem.getLeft();
-//                        SQLExpr right = binaryItem.getRight();
-//
-//                        if (right instanceof SQLLiteralExpr && !(right instanceof SQLNullExpr)) {
-//                            if (left instanceof SQLLiteralExpr) {
-//                                if (literalItems == null) {
-//                                    literalItems = new ArrayList<SQLBinaryOpExpr>();
-//                                }
-//                                literalItems.add(binaryItem);
-//                                continue;
-//                            }
-//
-//                            if (this.parameters != null) {
-//                                ExportParameterVisitorUtils.exportParameter(parameters, right);
-//                            }
-//                        } else if (right instanceof SQLVariantRefExpr) {
-//                            // skip
-//                        } else {
-//                            firstLeft = null;
-//                            break;
-//                        }
-//
-//
-//                        if (firstLeft == null) {
-//                            firstLeft = binaryItem.getLeft();
-//                            firstOp = binaryItem.getOperator();
-//                        } else {
-//                            if (firstOp != binaryItem.getOperator() || !SQLExprUtils.equals(firstLeft, left)) {
-//                                firstLeft = null;
-//                                break;
-//                            }
-//                        }
-//                    } else {
-//                        firstLeft = null;
-//                        break;
-//                    }
-//                }
-//            }
-//
-//            if (firstLeft != null) {
-//                if (literalItems != null) {
-//                    for (SQLBinaryOpExpr literalItem : literalItems) {
-//                        visit(literalItem);
-//                        println();
-//                        printOperator(operator);
-//                        print(' ');
-//
-//                    }
-//                }
-//                printExpr(firstLeft, parameterized);
-//                print(' ');
-//                printOperator(firstOp);
-//                print0(" ?");
-//
-//                if (this.parameters != null) {
-//                    if (parameters.size() > 0) {
-//                        this.parameters.addAll(parameters);
-//                    }
-//                }
-//
-//                incrementReplaceCunt();
-//                if (isRoot) {
-//                    this.indentCount--;
-//                }
-//                return false;
-//            }
-//        }
-//
-//        for (int i = 0; i < items.size(); i++) {
-//            SQLExpr item = items.get(i);
-//
-//            if (i != 0) {
-//                println();
-//                printOperator(operator);
-//                print(' ');
-//            }
-//
-//            if (item.hasBeforeComment()) {
-//                printlnComments(item.getBeforeCommentsDirect());
-//            }
-//
-//            if (item instanceof SQLBinaryOpExpr) {
-//                SQLBinaryOpExpr binaryOpExpr = (SQLBinaryOpExpr) item;
-//                SQLExpr binaryOpExprRight = binaryOpExpr.getRight();
-//                SQLBinaryOperator itemOp = binaryOpExpr.getOperator();
-//
-//                boolean isLogic = itemOp.isLogical();
-//                if (isLogic) {
-//                    indentCount++;
-//                }
-//
-//                boolean bracket;
-//                if (itemOp.priority > operator.priority) {
-//                    bracket = true;
-//                } else {
-//                    bracket = binaryOpExpr.isParenthesized() & !parameterized;
-//                }
-//                if (bracket) {
-//                    print('(');
-//                    visit(binaryOpExpr);
-//                    print(')');
-//                } else {
-//                    visit(binaryOpExpr);
-//                }
-//
-//                if (item.hasAfterComment() && !parameterized) {
-//                    print(' ');
-//                    printlnComment(item.getAfterCommentsDirect());
-//                }
-//
-//                if (isLogic) {
-//                    indentCount--;
-//                }
-//            } else if (item instanceof SQLBinaryOpExprGroup) {
-//                print('(');
-//                visit((SQLBinaryOpExprGroup) item);
-//                print(')');
-//            } else {
-//                printExpr(item, parameterized);
-//            }
-//        }
-//        if (isRoot) {
-//            this.indentCount--;
-//        }
-//        return false;
-//    }
+
+    @Override
+    public boolean visit(SQLBinaryOpExpr x) {
+        SQLObject obj = x;
+        while(true) {
+            obj = obj.getParent();
+            if (obj instanceof SQLSelectQueryBlock) {
+                break;
+            }
+        }
+        SQLSelectQueryBlock qb = (SQLSelectQueryBlock)obj;
+        if (qb.getWhere() == x) {
+            inwhere.push(x);
+        }
+
+        return super.visit(x);
+    }
+
+    public void endVisit(SQLBinaryOpExpr x) {
+//        stack中只可能存在qb和代表where的对象
+        if (inwhere.peek() == x) {
+            inwhere.pop();
+        }
+    }
+    public void endVisit(SQLBinaryOpExprGroup x) {
+//        stack中只可能存在qb和代表where的对象
+        if (inwhere.peek() == x) {
+            inwhere.pop();
+        }
+    }
+
+    @Override
+    public boolean visit(SQLBinaryOpExprGroup x) {
+
+        SQLObject obj = x;
+        while(true) {
+            obj = obj.getParent();
+            if (obj instanceof SQLSelectQueryBlock) {
+                break;
+            }
+        }
+        SQLSelectQueryBlock qb = (SQLSelectQueryBlock)obj;
+        if (qb.getWhere() == x) {
+            inwhere.push(x);
+        }
+
+
+        return super.visit(x);
+    }
 
 }
