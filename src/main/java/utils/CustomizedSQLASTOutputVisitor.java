@@ -1,6 +1,7 @@
 package utils;
 
 import com.alibaba.druid.DbType;
+import com.alibaba.druid.sql.SQLUtils;
 import com.alibaba.druid.sql.ast.*;
 import com.alibaba.druid.sql.ast.expr.*;
 import com.alibaba.druid.sql.ast.statement.*;
@@ -12,6 +13,8 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /***
  * @Author: winder
@@ -144,6 +147,193 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
                 print(number.longValue());
             }
     }
+
+    public String parameterize_tablename(String tname) {
+        Pattern p = Pattern.compile("_[0-9]{6}$");
+        Matcher m = p.matcher(tname);
+        boolean match = m.find();
+        String pname = tname;
+        if (match) {
+            pname = tname.substring(0, tname.length()-7) + "_${date}";
+        }
+        return pname;
+    }
+    @Override
+    protected void printTableSourceExpr(SQLExpr expr) {
+        if (exportTables) {
+            addTable(expr.toString());
+        }
+
+        if (isEnabled(VisitorFeature.OutputDesensitize)) {
+            String ident = null;
+            if (expr instanceof SQLIdentifierExpr) {
+                ident = ((SQLIdentifierExpr) expr).getName();
+            } else if (expr instanceof SQLPropertyExpr) {
+                SQLPropertyExpr propertyExpr = (SQLPropertyExpr) expr;
+                propertyExpr.getOwner().accept(this);
+                print('.');
+
+                ident = propertyExpr.getName();
+            }
+
+            if (ident != null) {
+                String desensitizeTable = SQLUtils.desensitizeTable(ident);
+                print0(desensitizeTable);
+                return;
+            }
+        }
+
+        if (tableMapping != null && expr instanceof SQLName) {
+            String tableName;
+            if (expr instanceof SQLIdentifierExpr) {
+                tableName = ((SQLIdentifierExpr) expr).normalizedName();
+            } else if (expr instanceof SQLPropertyExpr) {
+                tableName = ((SQLPropertyExpr) expr).normalizedName();
+            } else {
+                tableName = expr.toString();
+            }
+
+            String destTableName = tableMapping.get(tableName);
+            if (destTableName == null) {
+                if (expr instanceof SQLPropertyExpr) {
+                    SQLPropertyExpr propertyExpr = (SQLPropertyExpr) expr;
+                    String propName = propertyExpr.getName();
+                    destTableName = tableMapping.get(propName);
+                    if (destTableName == null
+                            && propName.length() > 2 && propName.charAt(0) == '`' && propName.charAt(propName.length() - 1) == '`') {
+                        destTableName = tableMapping.get(propName.substring(1, propName.length() - 1));
+                    }
+
+                    if (destTableName != null) {
+                        propertyExpr.getOwner().accept(this);
+                        print('.');
+                        print(destTableName);
+                        return;
+                    }
+                } else if (expr instanceof SQLIdentifierExpr) {
+                    boolean quote = tableName.length() > 2 && tableName.charAt(0) == '`' && tableName.charAt(tableName.length() - 1) == '`';
+                    if (quote) {
+                        destTableName = tableMapping.get(tableName.substring(1, tableName.length() - 1));
+                    }
+                }
+            }
+            if (destTableName != null) {
+                tableName = destTableName;
+                printName0(tableName);
+                return;
+            }
+        }
+
+//        目前只考虑`SQLIdentifierExpr` `SQLPropertyExpr`
+        if (expr instanceof SQLIdentifierExpr) {
+            SQLIdentifierExpr identifierExpr = (SQLIdentifierExpr) expr;
+            String name = identifierExpr.getName();
+            name = parameterize_tablename(name);
+            identifierExpr.setName(name);
+            if (!this.parameterized) {
+                printName0(name);
+                return;
+            }
+
+            boolean shardingSupport = this.shardingSupport
+                    && this.parameterized;
+
+            if (shardingSupport) {
+                String nameUnwrappe = unwrapShardingTable(name);
+
+                if (!name.equals(nameUnwrappe)) {
+                    incrementReplaceCunt();
+                }
+
+                printName0(nameUnwrappe);
+            } else {
+                printName0(name);
+            }
+        } else if (expr instanceof SQLPropertyExpr) {
+            SQLPropertyExpr propertyExpr = (SQLPropertyExpr) expr;
+            SQLExpr owner = propertyExpr.getOwner();
+
+            if (owner instanceof SQLIdentifierExpr) {
+                SQLIdentifierExpr identOwner = (SQLIdentifierExpr) owner;
+
+                String ownerName = identOwner.getName();
+                if (!this.parameterized) {
+                    printName0(identOwner.getName());
+                } else {
+                    if (shardingSupport) {
+                        ownerName = unwrapShardingTable(ownerName);
+                    }
+                    printName0(ownerName);
+                }
+            } else {
+                printExpr(owner);
+            }
+            print('.');
+
+            String name = propertyExpr.getName();
+            name = parameterize_tablename(name);
+            propertyExpr.setName(name);
+            if (!this.parameterized) {
+                printName0(propertyExpr.getName());
+                return;
+            }
+
+            boolean shardingSupport = this.shardingSupport
+                    && this.parameterized;
+
+            if (shardingSupport) {
+                String nameUnwrappe = unwrapShardingTable(name);
+
+                if (!name.equals(nameUnwrappe)) {
+                    incrementReplaceCunt();
+                }
+
+                printName0(nameUnwrappe);
+            } else {
+                printName0(name);
+            }
+        } else if (expr instanceof SQLMethodInvokeExpr) {
+            visit((SQLMethodInvokeExpr) expr);
+        } else {
+            expr.accept(this);
+        }
+
+    }
+
+
+    public boolean visit(SQLExprTableSource x) {
+        printTableSourceExpr(x.getExpr());
+
+        final SQLTableSampling sampling = x.getSampling();
+        if (sampling != null) {
+            print(' ');
+            sampling.accept(this);
+        }
+
+        String alias = x.getAlias();
+        List<SQLName> columns = x.getColumnsDirect();
+        if (alias != null) {
+            print(' ');
+            if (columns != null && columns.size() > 0) {
+                print0(ucase ? " AS " : " as ");
+            }
+            print0(alias);
+        }
+
+        if (columns != null && columns.size() > 0) {
+            print(" (");
+            printAndAccept(columns, ", ");
+            print(')');
+        }
+
+        if (isPrettyFormat() && x.hasAfterComment()) {
+            print(' ');
+            printlnComment(x.getAfterCommentsDirect());
+        }
+
+        return false;
+    }
+
     public boolean visit(SQLNCharExpr x) {
         if (this.parameterized  && isInwhere() && isnotFromSubQuery()) {
             ColInfo ci;
@@ -171,6 +361,7 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
         }
         return false;
     }
+
 
     @Override
     public boolean visit(SQLCharExpr x, boolean parameterized) {
@@ -641,4 +832,10 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
         return super.visit(x);
     }
 
+//    最好结合语义分析开发
+    public boolean visit(SQLPropertyExpr x) {
+//        String tname = x.setOwner("");
+        x.setOwner(parameterize_tablename(x.getOwnerName()));
+        return super.visit(x);
+    }
 }
