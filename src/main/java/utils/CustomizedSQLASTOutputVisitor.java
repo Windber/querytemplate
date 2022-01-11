@@ -301,39 +301,6 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
     }
 
 
-    public boolean visit(SQLExprTableSource x) {
-        printTableSourceExpr(x.getExpr());
-
-        final SQLTableSampling sampling = x.getSampling();
-        if (sampling != null) {
-            print(' ');
-            sampling.accept(this);
-        }
-
-        String alias = x.getAlias();
-        List<SQLName> columns = x.getColumnsDirect();
-        if (alias != null) {
-            print(' ');
-            if (columns != null && columns.size() > 0) {
-                print0(ucase ? " AS " : " as ");
-            }
-            print0(alias);
-        }
-
-        if (columns != null && columns.size() > 0) {
-            print(" (");
-            printAndAccept(columns, ", ");
-            print(')');
-        }
-
-        if (isPrettyFormat() && x.hasAfterComment()) {
-            print(' ');
-            printlnComment(x.getAfterCommentsDirect());
-        }
-
-        return false;
-    }
-
     public boolean visit(SQLNCharExpr x) {
         if (this.parameterized  && isInwhere() && isnotFromSubQuery()) {
             ColInfo ci;
