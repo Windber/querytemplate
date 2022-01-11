@@ -25,7 +25,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
-import expr.hive.usecustomdriverwithhook;
+import gtemplate.Main;
 import org.antlr.runtime.ClassicToken;
 import org.antlr.runtime.CommonToken;
 import org.antlr.runtime.tree.Tree;
@@ -110,8 +110,6 @@ import org.apache.calcite.util.ImmutableIntList;
 import org.apache.calcite.util.Pair;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.common.ObjectPair;
-import org.apache.hadoop.hive.common.ValidTxnList;
-import org.apache.hadoop.hive.common.ValidTxnWriteIdList;
 import org.apache.hadoop.hive.conf.Constants;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
@@ -301,7 +299,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
-public class CustomCalcitePlanner extends CustomSemanticAnalyzer {
+public class CustomCalcitePlanner extends SemanticAnalyzer {
 
     private final AtomicInteger noColsMissingStats = new AtomicInteger(0);
     private SemanticException semanticException;
@@ -1706,7 +1704,7 @@ public class CustomCalcitePlanner extends CustomSemanticAnalyzer {
             calciteGenPlan = HiveRelDecorrelator.decorrelateQuery(calciteGenPlan);
             LOG.debug("Plan after decorrelation:\n" + RelOptUtil.toString(calciteGenPlan));
 
-            usecustomdriverwithhook.rel = calciteGenPlan;
+            Main.rel = calciteGenPlan;
             // 2. Apply pre-join order optimizations
             calcitePreCboPlan = applyPreJoinOrderingTransforms(calciteGenPlan,
                     mdProvider.getMetadataProvider(), executorProvider);
@@ -4617,12 +4615,14 @@ public class CustomCalcitePlanner extends CustomSemanticAnalyzer {
                         colInfo.setInternalName(internalName);
                         // if there is any confict, then we do not generate it in the new select
                         // otherwise, we add it into the calciteColLst and generate the new select
-                        if (!out_rwsch.putWithCheck(colInfo.getTabAlias(), colInfo.getAlias(), internalName,
-                                colInfo)) {
-                            LOG.trace("Column already present in RR. skipping.");
-                        } else {
-                            calciteColLst.add(originalInputRefs.get(i));
-                        }
+//                        if (!colInfo.getAlias().equals("block__offset__inside__file") && !colInfo.getAlias().equals("input__file__name") && !colInfo.getAlias().equals("row__id")) {
+                            if (!out_rwsch.putWithCheck(colInfo.getTabAlias(), colInfo.getAlias(), internalName,
+                                    colInfo)) {
+                                LOG.trace("Column already present in RR. skipping.");
+                            } else {
+                                calciteColLst.add(originalInputRefs.get(i));
+                            }
+//                        }
                     }
                     outputRel = genSelectRelNode(calciteColLst, out_rwsch, srcRel);
                     // outputRel is the generated augmented select with extra unselected

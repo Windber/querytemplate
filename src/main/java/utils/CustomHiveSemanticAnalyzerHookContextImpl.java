@@ -1,7 +1,6 @@
 package utils;
 
-import expr.hive.usecustomdriverwithhook;
-import expr.hive.usedriverwithhook;
+import gtemplate.Main;
 import org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer;
 import org.apache.hadoop.hive.ql.parse.HiveSemanticAnalyzerHookContextImpl;
 
@@ -13,6 +12,6 @@ public class CustomHiveSemanticAnalyzerHookContextImpl extends HiveSemanticAnaly
     @Override
     public void update(BaseSemanticAnalyzer sem) {
         super.update(sem);
-        usecustomdriverwithhook.sem = sem;
+        Main.sem = sem;
     }
 }
