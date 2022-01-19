@@ -44,8 +44,13 @@ public class data {
     );
     public  static List<String> fordruid = new ArrayList<>(
             Arrays.asList(
-                    "select a, b from (select c + 3 as a, b from o1 join o2 on o1.c = o2.c where o1.c > 0 and o1.b in (1, 20)) t1 where t1.b > 10 or t1.a > 5 limit 100",
-                    "insert a from o1 limit 100"
+                    "select start_time, a from mada.tn_211226 where start_time > 12342 and start_time <= 12345",
+                    "select start_time, a from mada.tn_month_2112 where start_time > 12342 and start_time <= 12345",
+                    "select start_time, a from mada.tn_211206 where start_time > 12342 and start_time <= 12345",
+                    "select start_time, a from mada.tn_211206 where start_time > 12342 and start_time < 12345",
+                    "select a, b from (select c + 3 as a, b from o1 join o2 on o1.c = o2.c where o1.c > 0 and o1.b in (1, 20)) t1 where t1.b > 10 or t1.a > 5 limit 100"
+
+//                    "insert a from o1 limit 100"
             )
     );
 

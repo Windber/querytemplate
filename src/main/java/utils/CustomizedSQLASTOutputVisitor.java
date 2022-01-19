@@ -154,8 +154,18 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
         boolean match = m.find();
         String pname = tname;
         if (match) {
-            pname = tname.substring(0, tname.length()-7) + "_${date}";
+            pname = tname.substring(0, tname.length()-7);
+            return pname;
         }
+
+        Pattern p1 = Pattern.compile("_month_[0-9]{4}$");
+        Matcher m1 = p1.matcher(tname);
+        boolean match1 = m1.find();
+        pname = tname;
+        if (match1) {
+            pname = tname.substring(0, tname.length()-5);
+        }
+
         return pname;
     }
     @Override
@@ -358,17 +368,29 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
     public ColInfo get_colname(SQLObject x) {
         String name = "";
         SQLObject parent = x.getParent();
+        boolean ltle_op = false;
 
 //          考虑SQLBinaryOpExpr的情况
         if (parent.getClass() == SQLBinaryOpExpr.class) {
             SQLBinaryOpExpr biparent = (SQLBinaryOpExpr)parent;
+            if (biparent.getOperator() == SQLBinaryOperator.LessThan || biparent.getOperator() == SQLBinaryOperator.LessThanOrEqual) {
+                ltle_op = true;
+            }
             if (biparent.getLeft().getClass() == SQLIdentifierExpr.class) {
                 SQLIdentifierExpr id = (SQLIdentifierExpr)biparent.getLeft();
-                name += "$" + "{" + id.getName() + "}";
+                name = id.getName();
+                if (ltle_op && name.equals("start_time")) {
+                    name = "end_time";
+                }
+                name = "$" + "{" + name + "}";
             }else if(biparent.getLeft().getClass() == SQLPropertyExpr.class) {
                 SQLPropertyExpr prop = (SQLPropertyExpr)biparent.getLeft();
 //                name += "$" + "{" + prop.getOwnerName() + "." + prop.getName() + "}";
-                name += "$" + "{" + prop.getName() + "}";
+                name = prop.getName();
+                if (ltle_op && name.equals("start_time")) {
+                    name = "end_time";
+                }
+                name = "$" + "{" + name + "}";
             }
         }else if(parent.getClass() == SQLInListExpr.class) {
             SQLInListExpr inlistparent = (SQLInListExpr) parent;
