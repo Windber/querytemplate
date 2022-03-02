@@ -6,19 +6,45 @@
         - 因为alidruid自带了个现成工具类能将SQL转换成PreparedStatement，所以多了这一步
     - 输出的模板以及原始SQL以及其他提取的信息先存储在数据库中(可以辅助分析)，然后再从数据库中获取用于生成测试用例的SQL模板
 
-        ```
-                create table sqls (
-            id integer primary key,
-            origin_sql text,
-            extracted_template  text
-            );
-        ```
 2. 步骤
     - 对于每一条SQL，经过Hive(访问metastore)进行语法分析，语义分析，转化成`RelNode`
     - (此处可以进行一些与语义分析相关如转换过滤等工作)
     - 将`RelNode`输入Calcite，利用其带的转换工具将经过语义分析转回SQL
     - 基于alidruid已有的一个工具类`SQLASTOutputVisitor`二次开发，将SQL转换成需要的SQL模板
     - 
+
+3. 表设计
+```
+        create table sqls (
+    id integer primary key, -- 唯一序号
+    origin_sql text,    -- 原始sql
+    extracted_template  text    -- 模板
+    );    
+```
+
+```
+        create table element_from (
+    id integer, -- 关联sqls
+    tablesource text,    -- from中的真实数据源
+    );    
+```
+
+```
+        create table element_where (
+    id integer, -- 关联sqls
+    tablesource text,    -- 被参数化的字段的数据源
+    cols text,    -- where中被参数化的字段
+    oper_type text, 
+    );    
+```
+
+```
+        create table element_groupby (
+    id integer, -- 关联sqls
+    tablesource text,    -- 被参数化的字段的数据源
+    cols text,    -- where中被参数化的字段
+    );    
+```
 
 # 示例
 * origin sql: 
@@ -127,8 +153,24 @@ mvn clean package -Pinner
 ```
 2. 在服务器上传位置执行命令
 ```
-java -cp ./querytemplate-1.0-SNAPSHOT-jar-with-dependencies.jar gtemplate.Main  custom /usr/lib/impala-shell/gen-py/result.txt thrift://192.168.80.142:9083 
+java -cp ./querytemplate-1.0-SNAPSHOT-jar-with-dependencies.jar gtemplate.Main  custom /usr/lib/impala-shell/gen-py/result.txt thrift://192.168.31.92:9083 
 ```
 
-3. 查看生成的文件`template.sql`
+3. 查看结果
+    * 打包程序`querytemplate-1.0-SNAPSHOT-jar-with-dependencies.jar`，上传至服务器`root@192.168.80.151:/usr/lib/impala-shell/gen-py/extract/`
+    * `test.sql`为输入sql，执行程序`java -cp querytemplate-1.0-SNAPSHOT-jar-with-dependencies.jar gtemplate.Main test.sql`
+    * 查看生成的数据库`sqlite3 ./sample.db`，执行`select * from sqls;`
+      ```
+                create table sqls (\n" +
+                "  id integer primary key ,-- 唯一序号\n" +
+                "  origin_sql text, -- 原始sql\n" +
+                "  parameterized_template  text, --只参数化而没有去掉日期后缀\n" +
+                "  extracted_template  text,--参数化并且去掉日期后缀\n" +
+                "  extracted_template_for_generate_testsql  text --按照生成测试sql要求参数化去掉日期后缀\n" +
+                ");
+      ```
+    * 查看从数据库生成的文件`less ./template_allparamed.sql`，用于查看模板
+      - (通过该sql生成`select distinct extracted_template from sqls where extracted_template is not null;`)
+    * 查看从数据库生成的文件`less ./template_for_generate_testsql.sql`，用于生成测试sql 
+      - (通过该sql生成`select distinct extracted_template_for_generate_testsql from (select extracted_template_for_generate_testsql, row_number() over(partition by extracted_template) as r from sqls where extracted_template is not null) t where r=1;`)
 
