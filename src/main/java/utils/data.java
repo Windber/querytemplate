@@ -44,13 +44,28 @@ public class data {
     );
     public  static List<String> fordruid = new ArrayList<>(
             Arrays.asList(
-                    "select start_time, a from mada.tn_211226 where start_time > 12342 and start_time <= 12345",
-                    "select start_time, a from mada.tn_month_2112 where start_time > 12342 and start_time <= 12345",
-                    "select start_time, a from mada.tn_211206 where start_time > 12342 and start_time <= 12345",
-                    "select start_time, a from mada.tn_211206 where start_time > 12342 and start_time < 12345",
-                    "select a, b from (select c + 3 as a, b from o1 join o2 on o1.c = o2.c where o1.c > 0 and o1.b in (1, 20)) t1 where t1.b > 10 or t1.a > 5 limit 100"
+//                    "select substr(a, 1, 4) from t1 where custom(a, 1, 4) = 'abc'",
+                    "select a from t1 where a like '%abc' and b ilike '%abc'"
+                    ,
+//                    test1
+                    "select tableprefix_211205.* from mada.tableprefix_211205 as tableprefix_211205",
+                    "select * from mada.tableprefix_month_2112",
+                    "select * from ma.tableprefix211210",
 
-//                    "insert a from o1 limit 100"
+                    "select start_time, a from mada.tn_211226 as t where t.start_time > 12342 and start_time <= 12345",
+                    "select start_time, a from mada.tn_211226 as t where t.start_time > 12342 and start_time < 12345",
+
+                    "select a, b from (select c + 3 as a, b from o1 join o2 on o1.c = o2.c where o1.c > 0 and o1.b in (1, 20)) t1 join t2 where t1.b > 10 or t2.a > 5 limit 100",
+                    "select a from t1 where a = 'hello' and substr(t1.b, 25, 4) >= '123'",
+
+                    "select a from t1 where b in ('a', 'b')",
+                    "select a from t1 where a = 'hello' and b in ('a', 'b')",
+
+                    "select cast(pre_221212.msisdn as varchar) as _msisdn from mada.pre_221212 pre_221212 where pre_221212.msisdn in ('123456', '123456') and pre_221212.msisdn in ('123456', '123456') limit 1000",
+                    "select tn211206.start_time, a from ma.tn211206 as tn211206 where tn211206.start_time > 12342 and start_time <= 12345",
+
+                    "select a from t1 where a = 'hello' and b in ('a', 'b')",
+                    "select a from t1 where a = 'ss' and b in ('a', 'd', 'b')"
             )
     );
 

@@ -34,7 +34,7 @@
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>4.11</version>
-      <scope>test</scope>
+<!--      <scope>test</scope>-->
     </dependency>
 <!--    &lt;!&ndash; https://mvnrepository.com/artifact/org.apache.spark/spark-sql &ndash;&gt;-->
 <!--    <dependency>-->

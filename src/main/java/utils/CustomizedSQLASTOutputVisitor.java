@@ -9,6 +9,7 @@ import com.alibaba.druid.sql.visitor.ExportParameterVisitorUtils;
 import com.alibaba.druid.sql.visitor.SQLASTOutputVisitor;
 import com.alibaba.druid.sql.visitor.VisitorFeature;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
@@ -21,7 +22,25 @@ import java.util.regex.Pattern;
  * @Date: 12/28/21 3:37 PM
  */
 public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
-    Stack<SQLObject> inwhere = new Stack<SQLObject>();
+    Stack<FrameInfo> inwhere = new Stack<>();
+
+    public static enum Frame {
+        QB,
+        TARGET,
+        FROM,
+        WHERE,
+        GROUPBY,
+        HAVING,
+        ORDERBY
+    }
+    public static class FrameInfo {
+        public Frame type;
+        public SQLObject obj;
+        public FrameInfo(Frame type_, SQLObject obj_) {
+            type = type_;
+            obj = obj_;
+        }
+    }
     public static class ColInfo {
         String name;
         public ColInfo(String name) {
@@ -42,7 +61,7 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
     }
     private static final Integer ONE = Integer.valueOf(1);
 
-//    利用短路与性质，与isInwhere结合使用
+
 
     public boolean isnotSubQuery(SQLTableSource x) {
         if (x instanceof SQLExprTableSource) {
@@ -60,18 +79,41 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
         }
         return true;
     }
+
+//    @Override
+//    protected void printFunctionName(String name) {
+//        print0("{{{" + name + "}}}");
+//    }
+
+    //    利用短路与性质，与isInwhere结合使用
     public boolean isnotFromSubQuery() {
         SQLTableSource source = ((SQLSelectQueryBlock)
-                (inwhere.peek().getParent())).getFrom();
+                (inwhere.peek().obj.getParent())).getFrom();
         return isnotSubQuery(source);
     }
     public boolean isInwhere() {
-        if (inwhere.peek() instanceof SQLSelectQueryBlock) {
-            return false;
-        }else {
+        if (inwhere.peek().type == Frame.WHERE) {
             return true;
+        }else {
+            return false;
         }
     }
+
+    @Override
+    public void printAlias(String alias) {
+        if (alias == null || alias.length() == 0) {
+            return;
+        }
+
+        print(' ');
+
+        try {
+            this.appender.append(parameterize_tablename(alias));
+        } catch (IOException e) {
+            throw new RuntimeException("println error", e);
+        }
+    }
+
     @Override
     protected void printInteger(SQLIntegerExpr x, boolean parameterized) {
         Number number = x.getNumber();
@@ -149,25 +191,54 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
     }
 
     public String parameterize_tablename(String tname) {
-        Pattern p = Pattern.compile("_[0-9]{6}$");
+        Pattern p = Pattern.compile("_?[0-9]{4,6}$");
         Matcher m = p.matcher(tname);
         boolean match = m.find();
         String pname = tname;
         if (match) {
-            pname = tname.substring(0, tname.length()-7);
+            int suffixLen = m.group().length();
+            pname = tname.substring(0, tname.length()-suffixLen);
             return pname;
-        }
-
-        Pattern p1 = Pattern.compile("_month_[0-9]{4}$");
-        Matcher m1 = p1.matcher(tname);
-        boolean match1 = m1.find();
-        pname = tname;
-        if (match1) {
-            pname = tname.substring(0, tname.length()-5);
         }
 
         return pname;
     }
+
+    @Override
+    public boolean visit(SQLExprTableSource x) {
+        printTableSourceExpr(x.getExpr());
+
+        final SQLTableSampling sampling = x.getSampling();
+        if (sampling != null) {
+            print(' ');
+            sampling.accept(this);
+        }
+
+        String alias = x.getAlias();
+        List<SQLName> columns = x.getColumnsDirect();
+        if (alias != null) {
+            print(' ');
+            if (columns != null && columns.size() > 0) {
+                print0(ucase ? " AS " : " as ");
+            }
+            print0(parameterize_tablename(alias));
+        }
+
+        if (columns != null && columns.size() > 0) {
+            print(" (");
+            printAndAccept(columns, ", ");
+            print(')');
+        }
+
+        if (isPrettyFormat() && x.hasAfterComment()) {
+            print(' ');
+            printlnComment(x.getAfterCommentsDirect());
+        }
+
+        return false;
+    }
+
+
     @Override
     protected void printTableSourceExpr(SQLExpr expr) {
         if (exportTables) {
@@ -391,6 +462,14 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
                     name = "end_time";
                 }
                 name = "$" + "{" + name + "}";
+            }else {
+                if(x instanceof SQLCharExpr)
+                    name = (String)((SQLCharExpr)x).getValue();
+                else if(x instanceof SQLNCharExpr)
+                    name = (String)((SQLNCharExpr)x).getText();
+//                else if(x instanceof SQLNumberExpr)
+
+
             }
         }else if(parent.getClass() == SQLInListExpr.class) {
             SQLInListExpr inlistparent = (SQLInListExpr) parent;
@@ -403,11 +482,14 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
                 name += "$" + "{" + prop.getName() + "}";
             }
         }
+        if (x instanceof SQLCharExpr || x instanceof SQLNCharExpr) {
+            name = "\"" + name + "\"";
+        }
         return name.equals("")? null: new ColInfo(name);
     }
 
     public boolean visit(SQLSelectQueryBlock x) {
-        inwhere.push(x);
+        inwhere.push(new FrameInfo(Frame.QB, x));
         if (isPrettyFormat() && x.hasBeforeComment()) {
             printlnComments(x.getBeforeCommentsDirect());
         }
@@ -456,6 +538,9 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
         }
 
         SQLExpr where = x.getWhere();
+
+        inwhere.push(new FrameInfo(Frame.WHERE, where));
+
         if (where != null) {
             println();
             print0(ucase ? "WHERE " : "where ");
@@ -466,6 +551,7 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
                 printlnComment(x.getWhere().getAfterCommentsDirect());
             }
         }
+        inwhere.pop();
 
         printHierarchical(x);
 
@@ -518,13 +604,10 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
             print0(ucase ? "FOR UPDATE" : "for update");
         }
 
-
+        inwhere.pop();
         return false;
     }
 
-    public void endVisit(SQLSelectQueryBlock x) {
-        inwhere.pop();
-    }
     public boolean visit(SQLNumberExpr x) {
         if (this.parameterized && isInwhere() && isnotFromSubQuery()) {
 
@@ -770,55 +853,6 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
             x.getHint().accept(this);
         }
         return false;
-    }
-
-    @Override
-    public boolean visit(SQLBinaryOpExpr x) {
-        SQLObject obj = x;
-        while(true) {
-            obj = obj.getParent();
-            if (obj instanceof SQLSelectQueryBlock) {
-                break;
-            }
-        }
-        SQLSelectQueryBlock qb = (SQLSelectQueryBlock)obj;
-        if (qb.getWhere() == x) {
-            inwhere.push(x);
-        }
-
-        return super.visit(x);
-    }
-
-    public void endVisit(SQLBinaryOpExpr x) {
-//        stack中只可能存在qb和代表where的对象
-        if (inwhere.peek() == x) {
-            inwhere.pop();
-        }
-    }
-    public void endVisit(SQLBinaryOpExprGroup x) {
-//        stack中只可能存在qb和代表where的对象
-        if (inwhere.peek() == x) {
-            inwhere.pop();
-        }
-    }
-
-    @Override
-    public boolean visit(SQLBinaryOpExprGroup x) {
-
-        SQLObject obj = x;
-        while(true) {
-            obj = obj.getParent();
-            if (obj instanceof SQLSelectQueryBlock) {
-                break;
-            }
-        }
-        SQLSelectQueryBlock qb = (SQLSelectQueryBlock)obj;
-        if (qb.getWhere() == x) {
-            inwhere.push(x);
-        }
-
-
-        return super.visit(x);
     }
 
 //    最好结合语义分析开发
