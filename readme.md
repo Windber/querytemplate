@@ -157,18 +157,22 @@ java -cp ./querytemplate-1.0-SNAPSHOT-jar-with-dependencies.jar gtemplate.Main  
 ```
 
 3. 查看结果
-    * 打包程序`querytemplate-1.0-SNAPSHOT-jar-with-dependencies.jar`，上传至服务器`root@192.168.80.151:/usr/lib/impala-shell/gen-py/extract/`
-    * `test.sql`为输入sql，执行程序`java -cp querytemplate-1.0-SNAPSHOT-jar-with-dependencies.jar gtemplate.Main test.sql`
+    * 重新编译之后需要执行:
+    打包程序`querytemplate-1.0-SNAPSHOT-jar-with-dependencies.jar`，上传至服务器`root@192.168.80.151:/usr/lib/impala-shell/gen-py/extract/`
+    * 需要重新生成结果时需要执行:
+    `test.sql`为输入sql，执行程序`java -cp querytemplate-1.0-SNAPSHOT-jar-with-dependencies.jar gtemplate.Main test.sql`
     * 查看生成的数据库`sqlite3 ./sample.db`，执行`select * from sqls;`
-      ```
-                create table sqls (\n" +
+      * 表结构
+                "create table sqls (\n" +
                 "  id integer primary key ,-- 唯一序号\n" +
                 "  origin_sql text, -- 原始sql\n" +
                 "  parameterized_template  text, --只参数化而没有去掉日期后缀\n" +
                 "  extracted_template  text,--参数化并且去掉日期后缀\n" +
-                "  extracted_template_for_generate_testsql  text --按照生成测试sql要求参数化去掉日期后缀\n" +
-                ");
-      ```
+                "  extracted_template_for_generate_testsql  text, --按照生成测试sql要求参数化去掉日期后缀\n" +
+                "  extracted_funcs text --提取的函数名\n" +
+                ");";
+      * 查看原始sqls及提取的函数名`select origin_sql, extracted_funcs from sqls`
+
     * 查看从数据库生成的文件`less ./template_allparamed.sql`，用于查看模板
       - (通过该sql生成`select distinct extracted_template from sqls where extracted_template is not null;`)
     * 查看从数据库生成的文件`less ./template_for_generate_testsql.sql`，用于生成测试sql 
