@@ -44,8 +44,11 @@ public class data {
     );
     public  static List<String> fordruid = new ArrayList<>(
             Arrays.asList(
-//                    "select substr(a, 1, 4) from t1 where custom(a, 1, 4) = 'abc'",
-                    "select a from t1 where a like '%abc' and b ilike '%abc'"
+                    "select substr(a, 1, 4) from t1 where custom(a, 1, 4) = 'abc'",
+                    "select substr1(a, 1, 4) from t1 where custom1(a, 1, 4) = 'abc'",
+                    "select a from t1 where a like '%abc'"
+                    ,
+                    "select a from t1 where b ilike '%abc'"
                     ,
 //                    test1
                     "select tableprefix_211205.* from mada.tableprefix_211205 as tableprefix_211205",

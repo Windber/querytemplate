@@ -43,7 +43,8 @@ public class Main {
                 "  origin_sql text, -- 原始sql\n" +
                 "  parameterized_template  text, --只参数化而没有去掉日期后缀\n" +
                 "  extracted_template  text,--参数化并且去掉日期后缀\n" +
-                "  extracted_template_for_generate_testsql  text --按照生成测试sql要求参数化去掉日期后缀\n" +
+                "  extracted_template_for_generate_testsql  text, --按照生成测试sql要求参数化去掉日期后缀\n" +
+                "  extracted_funcs text --提取的函数名\n" +
                 ");";
         statement.executeUpdate(create_sql
         );
@@ -51,7 +52,7 @@ public class Main {
 
         int id = 0, template0_null_cnt=0, template1_null_cnt=0, template2_null_cnt=0;
 
-        PreparedStatement pstatement = connection.prepareStatement("insert into sqls values(?, ?, ?, ?, ?);");
+        PreparedStatement pstatement = connection.prepareStatement("insert into sqls values(?, ?, ?, ?, ?, ?);");
 
 
         for (Iterator<String> it = iter; it.hasNext(); ) {
@@ -59,7 +60,7 @@ public class Main {
 
             //指定数据库类型
             DbType dbtype = JdbcConstants.HIVE;
-            String template0, template1, template2;
+            String template0, template1, template2, extractedFuncs;
 
 
 
@@ -71,8 +72,16 @@ public class Main {
             }
             try {
                 template1 = C1ParameterizedOutputVisitorUtils.parameterize(sql, dbtype);
+                extractedFuncs = "";
+                for(int i=0; i<C1ParameterizedOutputVisitorUtils.visitor.extractedFuncs.size(); i++) {
+                    extractedFuncs += C1ParameterizedOutputVisitorUtils.visitor.extractedFuncs.get(i);
+                    extractedFuncs += ", ";
+                }
+                extractedFuncs = C1ParameterizedOutputVisitorUtils.visitor.extractedFuncs.size() == 0? extractedFuncs: extractedFuncs.substring(0, extractedFuncs.length()-2);
+
             }catch (Exception e) {
                 template1 = NULL;
+                extractedFuncs = NULL;
                 template1_null_cnt++;
             }
             try {
@@ -91,6 +100,7 @@ public class Main {
             System.out.println("template0:\n" + template0);
             System.out.println("template1:\n" + template1);
             System.out.println("template2:\n" + template2);
+            System.out.println("extractedFuncs:\n" + extractedFuncs);
 
 //            String sql_insert;
             pstatement.setInt(1, id);
@@ -109,6 +119,11 @@ public class Main {
                 pstatement.setString(5, template2);
             }else {
                 pstatement.setNull(5, Types.VARCHAR);
+            }
+            if (extractedFuncs != NULL) {
+                pstatement.setString(6, extractedFuncs);
+            }else {
+                pstatement.setNull(6, Types.VARCHAR);
             }
 
             pstatement.executeUpdate();

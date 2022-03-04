@@ -80,10 +80,7 @@ public class CustomizedSQLASTOutputVisitor extends SQLASTOutputVisitor {
         return true;
     }
 
-//    @Override
-//    protected void printFunctionName(String name) {
-//        print0("{{{" + name + "}}}");
-//    }
+
 
     //    利用短路与性质，与isInwhere结合使用
     public boolean isnotFromSubQuery() {

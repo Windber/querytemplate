@@ -24,7 +24,12 @@ import java.util.regex.Pattern;
  */
 public class C1SQLASTOutputVisitor extends SQLASTOutputVisitor {
     Stack<FrameInfo> inwhere = new Stack<>();
-
+    public List<String> extractedFuncs = new ArrayList<>();
+    @Override
+    protected void printFunctionName(String name) {
+        extractedFuncs.add(name);
+        super.printFunctionName(name);
+    }
     public static enum Frame {
         QB,
         TARGET,

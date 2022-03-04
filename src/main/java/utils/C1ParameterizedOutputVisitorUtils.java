@@ -50,6 +50,7 @@ import java.util.Map;
 import java.util.TimeZone;
 
 public class C1ParameterizedOutputVisitorUtils {
+    public static C1SQLASTOutputVisitor visitor = null;
     private final static SQLParserFeature[] defaultFeatures = {
             SQLParserFeature.EnableSQLBinaryOpExprGroup,
             SQLParserFeature.UseInsertColumnsCache,
@@ -414,7 +415,7 @@ public class C1ParameterizedOutputVisitorUtils {
             case phoenix:
                 return new PhoenixOutputVisitor(out, true);
             default:
-                return new C1SQLASTOutputVisitor(out, true);
+                return visitor = new C1SQLASTOutputVisitor(out, true);
         }
     }
 
